@@ -12,9 +12,9 @@ export default function Sidebar() {
   }, [])
 
   const handleLogout = () => {
-    localStorage.clear()          // supprime toutes les infos côté client
-    setPseudo(null)               // met à jour l’état local
-    window.location.reload()      // rafraîchit la page pour re-render complet
+    localStorage.clear()          // supprime toutes les info coté client
+    setPseudo(null)            
+    window.location.reload()     
   }
 
   return (
@@ -33,7 +33,7 @@ export default function Sidebar() {
         </div>
 
         <nav className="mt-6 flex flex-col gap-2">
-          {['page1','page2','page3','page4'].map((p) => (
+          {['matches','champions','page3','page4'].map((p) => (
             <Link
               key={p}
               href={`/${p}`}
