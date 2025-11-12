@@ -12,7 +12,7 @@ type Champion = {
 type BetStatus = 'pending' | 'won' | 'lost'
 type Bet = {
   id: number
-  amount: number
+  amount: number           // = nombre de tokens misés
   status: BetStatus
   created_at: string
   champion_id: number
@@ -51,7 +51,7 @@ function normBet(x: unknown): Bet {
   const o = x as Record<string, unknown>
   return {
     id: Number(o.id),
-    amount: Number(o.amount),
+    amount: Number(o.amount), // tokens
     status: (o.status as BetStatus) ?? 'pending',
     created_at: String(o.created_at),
     champion_id: Number(o.champion_id),
@@ -59,9 +59,9 @@ function normBet(x: unknown): Bet {
     image_url: String(o.image_url),
   }
 }
-const fmtAmount = (n: unknown) => {
+const fmtTokens = (n: unknown) => {
   const x = toNum(n)
-  return Number.isFinite(x) ? x.toFixed(2) : '0.00'
+  return Number.isFinite(x) ? Math.round(x).toString() : '0'
 }
 
 /* --------------------------- Page --------------------------- */
@@ -71,7 +71,7 @@ export default function BetsPage() {
   const [loading, setLoading] = useState(true)
   const [loadingBets, setLoadingBets] = useState(true)
   const [selected, setSelected] = useState<number | null>(null)
-  const [amount, setAmount] = useState('5')
+  const [amount, setAmount] = useState('5')          // tokens (string pour l’input)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -89,7 +89,7 @@ export default function BetsPage() {
         setBets(Array.isArray(betsJson) ? betsJson.map((b) => (isBet(b) ? normBet(b) : normBet(b))) : [])
       } catch (err) {
         console.error(err)
-        setMessage('Erreur lors du chargement des données.')
+        setMessage('Impossible de charger les données.')
       } finally {
         setLoading(false)
         setLoadingBets(false)
@@ -105,15 +105,16 @@ export default function BetsPage() {
 
   async function submitBet() {
     if (!selected) return setMessage('Choisis un champion.')
-    const amt = Number(amount)
-    if (!Number.isFinite(amt) || amt <= 0) return setMessage('Montant invalide.')
+    const amt = Math.floor(Number(amount))
+    if (!Number.isFinite(amt) || amt <= 0) return setMessage('Montant de tokens invalide.')
+        
     setSubmitting(true)
     setMessage(null)
     try {
       const res = await fetch('/api/bets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ champion_id: selected, amount: amt }),
+        body: JSON.stringify({ champion_id: selected, amount: amt }), // amount = tokens
       })
       const json: unknown = await res.json()
       if (!res.ok || isApiError(json)) throw new Error(isApiError(json) ? json.error : 'Erreur API')
@@ -167,12 +168,8 @@ export default function BetsPage() {
     <main className="max-w-6xl mx-auto p-6">
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1rem' }}>
-        <h1 className="title" style={{ fontSize: '1.5rem' }}>Parier sur un skin au prochain patch</h1>
-        <Link
-          href="/patches"
-          className="btn-primary"
-          title="Voir les patchs"
-        >
+        <h1 className="title" style={{ fontSize: '1.5rem' }}>Parier des tokens sur un skin au prochain patch</h1>
+        <Link href="/patches" className="btn-primary" title="Voir les patchs">
           Voir les patchs
         </Link>
       </div>
@@ -200,19 +197,13 @@ export default function BetsPage() {
                   backgroundColor: 'var(--background-secondary)',
                 }}
               >
-                <img
-                  src={b.image_url}
-                  alt={b.champion_name}
-                  style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'contain' }}
-                />
+                <img src={b.image_url} alt={b.champion_name} style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'contain' }} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600 }}>{b.champion_name}</div>
-                  <div className="subtitle" style={{ fontSize: '.8rem' }}>
-                    {new Date(b.created_at).toLocaleString()}
-                  </div>
+                  <div className="subtitle" style={{ fontSize: '.8rem' }}>{new Date(b.created_at).toLocaleString()}</div>
                 </div>
 
-                <div style={{ fontWeight: 600 }}>Mise : {fmtAmount(b.amount)} €</div>
+                <div style={{ fontWeight: 600 }}>Mise : {fmtTokens(b.amount)} tokens</div>
 
                 <select
                   value={b.status}
@@ -228,12 +219,7 @@ export default function BetsPage() {
                 <button
                   onClick={() => removeBet(b.id)}
                   className="input-field"
-                  style={{
-                    padding: '0.25rem 0.5rem',
-                    borderColor: 'var(--border)',
-                    background: 'transparent',
-                    cursor: 'pointer'
-                  }}
+                  style={{ padding: '0.25rem 0.5rem', borderColor: 'var(--border)', background: 'transparent', cursor: 'pointer' }}
                 >
                   Supprimer
                 </button>
@@ -250,21 +236,16 @@ export default function BetsPage() {
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 260 }}>
             <label className="subtitle" style={{ display: 'block', marginBottom: '.25rem' }}>Champion</label>
-            <ChampionSelect
-              champions={champions}
-              loading={loading}
-              selected={selected}
-              onChange={setSelected}
-            />
+            <ChampionSelect champions={champions} loading={loading} selected={selected} onChange={setSelected} />
           </div>
 
           <div>
-            <label className="subtitle" style={{ display: 'block', marginBottom: '.25rem' }}>Mise (€)</label>
+            <label className="subtitle" style={{ display: 'block', marginBottom: '.25rem' }}>Mise (tokens)</label>
             <input
               type="number"
-              inputMode="decimal"
-              step="0.5"
-              min="0.5"
+              inputMode="numeric"
+              step={1}
+              min={1}
               className="input-field"
               value={amount}
               onChange={e => setAmount(e.target.value)}
@@ -281,22 +262,18 @@ export default function BetsPage() {
           </button>
         </div>
 
-        {useMemo(() => (
-          <>
-            {(() => {
-              const cc = chosenChampion
-              if (!cc) return null
-              const pr = Number(cc.pick_rate)
-              return (
-                <div className="subtitle" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginTop: '.75rem' }}>
-                  <img src={cc.image_url} alt={cc.name} style={{ width: 24, height: 24, borderRadius: 6, objectFit: 'contain' }} />
-                  <span>{cc.name}</span>
-                  {Number.isFinite(pr) && <span>• Pick rate : {pr.toFixed(2)}%</span>}
-                </div>
-              )
-            })()}
-          </>
-        ), [chosenChampion])}
+        {useMemo(() => {
+          const cc = chosenChampion
+          if (!cc) return null
+          const pr = Number(cc.pick_rate)
+          return (
+            <div className="subtitle" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginTop: '.75rem' }}>
+              <img src={cc.image_url} alt={cc.name} style={{ width: 24, height: 24, borderRadius: 6, objectFit: 'contain' }} />
+              <span>{cc.name}</span>
+              {Number.isFinite(pr) && <span>• Pick rate : {pr.toFixed(2)}%</span>}
+            </div>
+          )
+        }, [chosenChampion])}
 
         {message && <p className="subtitle" style={{ color: '#ff6b6b', marginTop: '.5rem' }}>{message}</p>}
       </section>
@@ -354,11 +331,7 @@ function ChampionGrid({
 }) {
   if (!champions.length) return null
   return (
-    <div style={{
-      display: 'grid',
-      gap: '0.75rem',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))'
-    }}>
+    <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))' }}>
       {champions.map(c => {
         const pr = Number(c.pick_rate)
         const isSelected = selected === c.id
@@ -367,24 +340,11 @@ function ChampionGrid({
             key={c.id}
             onClick={() => onSelect(c.id)}
             className="card"
-            style={{
-              textAlign: 'left',
-              transition: 'box-shadow .2s',
-              outline: isSelected ? `2px solid var(--accent)` : 'none',
-              cursor: 'pointer'
-            }}
+            style={{ textAlign: 'left', transition: 'box-shadow .2s', outline: isSelected ? `2px solid var(--accent)` : 'none', cursor: 'pointer' }}
           >
-            <img
-              src={c.image_url}
-              alt={c.name}
-              style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'contain', marginBottom: 8 }}
-            />
+            <img src={c.image_url} alt={c.name} style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'contain', marginBottom: 8 }} />
             <div style={{ fontWeight: 600 }}>{c.name}</div>
-            {Number.isFinite(pr) && (
-              <div className="subtitle" style={{ fontSize: '.85rem' }}>
-                Pick rate: {pr.toFixed(2)}%
-              </div>
-            )}
+            {Number.isFinite(pr) && <div className="subtitle" style={{ fontSize: '.85rem' }}>Pick rate: {pr.toFixed(2)}%</div>}
           </button>
         )
       })}
