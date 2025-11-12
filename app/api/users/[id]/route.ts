@@ -1,3 +1,4 @@
+// app/api/users/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import type { RowDataPacket } from 'mysql2/promise'
@@ -11,10 +12,12 @@ export const revalidate = 0
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }   // 👈 params is a Promise
 ) {
   try {
-    const id = Number(params.id)
+    const { id: idRaw } = await params                 // 👈 await it
+    const id = Number(idRaw)
+
     if (!Number.isFinite(id) || id <= 0) {
       return NextResponse.json({ error: 'ID invalide' }, { status: 400 })
     }
@@ -23,6 +26,7 @@ export async function GET(
       'SELECT tokens FROM users WHERE id = ? LIMIT 1',
       [id]
     )
+
     if (!rows.length) {
       return NextResponse.json({ error: 'Utilisateur introuvable' }, { status: 404 })
     }
