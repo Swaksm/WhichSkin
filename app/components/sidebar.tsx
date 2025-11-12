@@ -33,7 +33,7 @@ export default function Sidebar() {
         </div>
 
         <nav className="mt-6 flex flex-col gap-2">
-          {['matches','champions','page3','page4'].map((p) => (
+          {['patches','champions','bets','page4'].map((p) => (
             <Link
               key={p}
               href={`/${p}`}
