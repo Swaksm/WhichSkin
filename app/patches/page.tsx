@@ -2,11 +2,18 @@
 
 import { useEffect, useState } from 'react'
 
+type SkinInfo = {
+  name: string
+  champion: string | null
+  champion_id: number | null
+}
+
 type Patch = {
   id: number
   title: string
   date: string
   url: string
+  skins: SkinInfo[]
 }
 
 export default function PatchesPage() {
@@ -39,15 +46,10 @@ export default function PatchesPage() {
       {patches.map((patch) => (
         <div
           key={patch.id}
-          className="bg-background-secondary rounded-lg shadow p-6 flex flex-col gap-3 hover:scale-[1.02] transition-transform"
+          className="bg-background-secondary rounded-lg shadow p-6 flex flex-col gap-4 hover:scale-[1.02] transition-transform"
         >
-          <h2 className="text-2xl font-bold text-foreground">
-            {patch.title}
-          </h2>
-
-          <p className="text-foreground-secondary">
-            Publié le {patch.date}
-          </p>
+          <h2 className="text-2xl font-bold text-foreground">{patch.title}</h2>
+          <p className="text-foreground-secondary">Publié le {patch.date}</p>
 
           <a
             href={patch.url}
@@ -57,6 +59,31 @@ export default function PatchesPage() {
           >
             Voir le patch complet sur le site officiel →
           </a>
+
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold text-pink-400 mb-2">
+              Nouveaux skins dans ce patch
+            </h3>
+
+            {patch.skins.length > 0 ? (
+              <ul className="list-disc list-inside">
+                {patch.skins.map((skin) => (
+                  <li key={skin.name} className="text-foreground">
+                    {skin.name}
+                    {skin.champion && (
+                      <span className="text-sm text-foreground-secondary ml-2">
+                        → {skin.champion}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-foreground-secondary italic">
+                Aucun skin détecté
+              </p>
+            )}
+          </div>
         </div>
       ))}
     </div>
