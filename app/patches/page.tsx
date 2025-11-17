@@ -17,6 +17,7 @@ type Patch = {
   skins: SkinInfo[]
 }
 
+
 export default function PatchesPage() {
   const [patches, setPatches] = useState<Patch[]>([])
   const [loading, setLoading] = useState(true)

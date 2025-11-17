@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server'
 import * as cheerio from 'cheerio'
 import { db } from '@/db'
+import type { ResultSetHeader, RowDataPacket } from 'mysql2'
+
 
 type Champion = {
   id: number
   name: string
 }
+
+type DBPatchRow = RowDataPacket & {
+  id: number
+}
+
 
 type SkinInfo = {
   name: string
@@ -126,6 +133,46 @@ function extractSkinsFromPatch($: cheerio.CheerioAPI): string[] {
   return Array.from(skins)
 }
 
+async function savePatchToDb(patch: {
+  title: string
+  url: string
+  publishedAt: Date | null
+  skins: SkinInfo[]
+}) {
+  // 1) On regarde si le patch existe déjà via son URL
+  const [rows] = await db.query<DBPatchRow[]>(
+    'SELECT id FROM patches WHERE url = ? LIMIT 1',
+    [patch.url]
+  )
+
+  const existing = rows[0]
+  let patchId: number
+
+  if (existing) {
+    // Patch déjà en base -> on récupère juste son id
+    patchId = existing.id
+  } else {
+    // 2) On insère le patch
+    const [result] = await db.query<ResultSetHeader>(
+      'INSERT INTO patches (title, url, published_at) VALUES (?, ?, ?)',
+      [patch.title, patch.url, patch.publishedAt]
+    )
+
+    patchId = result.insertId
+  }
+
+  // 3) On insère les skins (si déjà présents, le UNIQUE + INSERT IGNORE évitent les doublons)
+  for (const skin of patch.skins) {
+    await db.query(
+      'INSERT IGNORE INTO patch_skins (patch_id, name, champion_id) VALUES (?, ?, ?)',
+      [patchId, skin.name, skin.champion_id]
+    )
+  }
+
+  return patchId
+}
+
+
 export async function GET() {
   try {
     // 1. Récup les champions BDD
@@ -146,43 +193,55 @@ export async function GET() {
       }
     })
 
-    const patches: PatchInfo[] = []
+        const patches: PatchInfo[] = []
 
-    // 4. Pour chaque patch on scrape + map skins -> champion
+    // 4. Pour chaque patch on scrape + map skins -> champion + save BDD
     for (const [i, url] of links.entries()) {
-        const page = await fetch(url).then(r => r.text())
-        const $page = cheerio.load(page)
+      const page = await fetch(url).then(r => r.text())
+      const $page = cheerio.load(page)
 
-        const title = $page('h1').first().text().trim() || `Patch ${i + 1}`
+      const title = $page('h1').first().text().trim() || `Patch ${i + 1}`
 
-        const dateAttr = $page('time').attr('datetime')
-        const date = dateAttr
-          ? new Date(dateAttr).toLocaleDateString('fr-FR', {
-              day: '2-digit',
-              month: 'long',
-              year: 'numeric',
-            })
-          : 'Date inconnue'
+      const dateAttr = $page('time').attr('datetime')
+      const publishedAt = dateAttr ? new Date(dateAttr) : null
 
-        const rawSkins = extractSkinsFromPatch($page)
+      const date = publishedAt
+        ? publishedAt.toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+          })
+        : 'Date inconnue'
 
-        const skins: SkinInfo[] = rawSkins.map(name => {
-          const champ = findChampionForSkin(name, champions)
-          return {
-            name,
-            champion: champ ? champ.name : null,
-            champion_id: champ ? champ.id : null,
-          }
-        })
+      const rawSkins = extractSkinsFromPatch($page)
 
-        patches.push({
-          id: i + 1,
-          title,
-          date,
-          url,
-          skins,
-        })
+      const skins: SkinInfo[] = rawSkins.map(name => {
+        const champ = findChampionForSkin(name, champions)
+        return {
+          name,
+          champion: champ ? champ.name : null,
+          champion_id: champ ? champ.id : null,
+        }
+      })
+
+      // 👉 Sauvegarde en base (ne recrée rien si le patch existe déjà)
+      await savePatchToDb({
+        title,
+        url,
+        publishedAt,
+        skins,
+      })
+
+      // Ce qui est renvoyé au front
+      patches.push({
+        id: i + 1,
+        title,
+        date,
+        url,
+        skins,
+      })
     }
+
 
     return NextResponse.json({ patches })
   } catch (err) {

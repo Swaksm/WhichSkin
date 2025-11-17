@@ -205,16 +205,10 @@ export default function BetsPage() {
 
                 <div style={{ fontWeight: 600 }}>Mise : {fmtTokens(b.amount)} tokens</div>
 
-                <select
-                  value={b.status}
-                  onChange={e => changeStatus(b.id, e.target.value as BetStatus)}
-                  className="input-field"
-                  style={{ padding: '0.25rem 0.5rem', width: 120 }}
-                >
-                  <option value="pending">pending</option>
-                  <option value="won">won</option>
-                  <option value="lost">lost</option>
-                </select>
+                <span className="subtitle" style={{ fontSize: '0.9rem', opacity: 0.8 }}>
+  {b.status}
+</span>
+
 
                 <button
                   onClick={() => removeBet(b.id)}
