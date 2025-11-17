@@ -96,7 +96,7 @@ export default function Sidebar() {
           className="p-6 text-2xl font-bold"
         >
           <Link href="/" style={{ color: 'var(--accent)' }}>
-            WhichSkin
+            WhichSkin?
           </Link>
         </div>
 

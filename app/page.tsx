@@ -67,7 +67,7 @@ export default function HomePage() {
       >
         <div>
           <h1 className="title" style={{ fontSize: '2rem' }}>
-            WhichSkin — Paris LoL & Tokens
+            WhichSkin? — Paris LoL & Tokens
           </h1>
           <p className="subtitle" style={{ marginTop: '.25rem' }}>
             Parie sur l’arrivée d’un skin au prochain patch, suis les notes de patch,
