@@ -39,7 +39,7 @@ export default function AppWrapper({ children }: { children: ReactNode }) {
         className="fixed inset-0 flex flex-col items-center justify-center z-50"
       >
         <h1 style={{ color: 'var(--accent)' }} className="text-4xl font-bold mb-6">
-          Esportify
+          WhichSkin
         </h1>
         <div
           style={{ backgroundColor: 'var(--background-secondary)' }}

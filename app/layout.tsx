@@ -4,7 +4,7 @@ import Sidebar from './components/sidebar'
 import AppWrapper from './components/loading'
 
 export const metadata = {
-  title: 'Esportify',
+  title: 'WhichSkin',
   description: 'Application Esport',
 }
 

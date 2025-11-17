@@ -12,7 +12,6 @@ export default function Sidebar() {
   const [tokens, setTokens] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // ---- helpers ----
   const readPseudo = () => (localStorage.getItem('pseudo') || '').trim() || null
   const readUserId = () => {
     const n = Number(localStorage.getItem('user_id'))
@@ -40,7 +39,6 @@ export default function Sidebar() {
     }
   }, [])
 
-  // init pseudo + userId + tokens
   useEffect(() => {
     const p = readPseudo()
     const id = readUserId()
@@ -49,7 +47,6 @@ export default function Sidebar() {
     void fetchUserTokens(id)
   }, [fetchUserTokens])
 
-  // refresh on custom events / visibility / storage
   useEffect(() => {
     const onTokensUpdated = () => fetchUserTokens(readUserId())
     const onVisible = () => {
@@ -99,12 +96,12 @@ export default function Sidebar() {
           className="p-6 text-2xl font-bold"
         >
           <Link href="/" style={{ color: 'var(--accent)' }}>
-            Esportify
+            WhichSkin
           </Link>
         </div>
 
         <nav className="mt-6 flex flex-col gap-2">
-          {['patches', 'champions', 'bets', 'wheel'].map((p) => (
+          {['patches', 'champions', 'bets', 'wheel','results'].map((p) => (
             <Link
               key={p}
               href={`/${p}`}

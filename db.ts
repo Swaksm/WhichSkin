@@ -4,7 +4,7 @@ export const db = mysql.createPool({
   host: 'localhost',
   user: 'root',
   password: '',
-  database: 'esportify',
+  database: 'whichskin',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,

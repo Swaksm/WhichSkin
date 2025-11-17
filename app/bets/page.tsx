@@ -19,6 +19,43 @@ type Bet = {
   champion_name: string
   image_url: string
 }
+
+type PatchSkinFromApi = {
+  name: string
+  champion: string | null
+  champion_id: number | null
+}
+
+type PatchFromApi = {
+  id: number
+  title: string
+  date: string
+  url: string
+  skins: PatchSkinFromApi[]
+}
+
+type PatchesApiResponse = {
+  patches: PatchFromApi[]
+}
+
+function isPatchesApiResponse(x: unknown): x is PatchesApiResponse {
+  if (typeof x !== 'object' || x === null) return false
+  if (!('patches' in x)) return false
+
+  const p = (x as { patches: unknown }).patches
+  if (!Array.isArray(p)) return false
+
+  if (p.length === 0) return true
+
+  const first = p[0] as Record<string, unknown>
+  return (
+    typeof first.id === 'number' &&
+    typeof first.title === 'string' &&
+    typeof first.date === 'string'
+  )
+}
+
+
 type ApiError = { error: string }
 
 /* -------------------------- Helpers -------------------------- */
@@ -74,19 +111,63 @@ export default function BetsPage() {
   const [amount, setAmount] = useState('5')          // tokens (string pour l’input)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [lastPatchDate, setLastPatchDate] = useState<string | null>(null)
+
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [cRes, bRes] = await Promise.all([
-          fetch('/api/champions', { cache: 'no-store' }),
-          fetch('/api/bets', { cache: 'no-store' }),
-        ])
-        if (!cRes.ok || !bRes.ok) throw new Error('Erreur réseau')
-        const champsJson: unknown = await cRes.json()
-        const betsJson: unknown = await bRes.json()
-        setChampions(Array.isArray(champsJson) ? champsJson.map((c) => normChampion(c as Champion)) : [])
-        setBets(Array.isArray(betsJson) ? betsJson.map((b) => (isBet(b) ? normBet(b) : normBet(b))) : [])
+        const [cRes, bRes, pRes] = await Promise.all([
+  fetch('/api/champions', { cache: 'no-store' }),
+  fetch('/api/bets', { cache: 'no-store' }),
+  fetch('/api/patches', { cache: 'no-store' }),
+])
+
+if (!cRes.ok || !bRes.ok || !pRes.ok) throw new Error('Erreur réseau')
+
+const champsJson = (await cRes.json()) as unknown
+const betsJson = (await bRes.json()) as unknown
+const patchesJson = (await pRes.json()) as unknown
+
+// Champions
+setChampions(
+  Array.isArray(champsJson)
+    ? champsJson.map((c) => normChampion(c as Champion))
+    : []
+)
+
+// Bets
+setBets(
+  Array.isArray(betsJson)
+    ? betsJson.map((b) => (isBet(b) ? normBet(b) : normBet(b)))
+    : []
+)
+
+// Patches → dernier patch
+if (isPatchesApiResponse(patchesJson) && patchesJson.patches.length > 0) {
+  const firstPatch = patchesJson.patches[0]
+  setLastPatchDate(firstPatch.date)
+}
+
+
+// Patches
+if (
+  typeof patchesJson === 'object' &&
+  patchesJson !== null &&
+  'patches' in patchesJson
+) {
+  const p = patchesJson as PatchesApiResponse
+
+  if (Array.isArray(p.patches) && p.patches.length > 0) {
+    const firstPatch = p.patches[0]
+
+    if (firstPatch.date) {
+      setLastPatchDate(firstPatch.date)
+    }
+  }
+}
+
+
       } catch (err) {
         console.error(err)
         setMessage('Impossible de charger les données.')
@@ -167,12 +248,38 @@ export default function BetsPage() {
   return (
     <main className="max-w-6xl mx-auto p-6">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1rem' }}>
-        <h1 className="title" style={{ fontSize: '1.5rem' }}>Parier des tokens sur un skin au prochain patch</h1>
-        <Link href="/patches" className="btn-primary" title="Voir les patchs">
-          Voir les patchs
-        </Link>
-      </div>
+      <div
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '0.75rem',
+    marginBottom: '1rem',
+    flexWrap: 'wrap',
+  }}
+>
+  <div>
+    <h1 className="title" style={{ fontSize: '1.5rem' }}>
+      Parier des tokens sur un skin au prochain patch
+    </h1>
+    {lastPatchDate && (
+      <p className="subtitle" style={{ marginTop: '.25rem' }}>
+        Dernier patch publié le <strong>{lastPatchDate}</strong>
+      </p>
+    )}
+  </div>
+
+  <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+    <Link href="/results" className="btn-primary" title="Voir les résultats des paris">
+      Voir les résultats
+    </Link>
+    <Link href="/patches" className="btn-primary" title="Voir les patchs">
+      Voir les patchs
+    </Link>
+  </div>
+</div>
+
+
 
       {/* Historique des paris */}
       <section className="card" style={{ marginBottom: '1.25rem' }}>
